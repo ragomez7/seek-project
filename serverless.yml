@@ -1,0 +1,49 @@
+service: seek-project
+
+plugins:
+  - serverless-python-requirements
+
+package:
+  artifact: seek-project.zip
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: us-east-2
+  environment:
+    MONGO_HOST: ${ssm:/docdb/host}
+    MONGO_PASSWORD: ${ssm:/docdb/password}
+    MONGO_PORT: "27017"
+    CA_FILE_PATH: "/var/task/certs/global-bundle.pem"
+  
+  vpc:
+    # the SG on your DocumentDB cluster (or a SG that allows outbound 27017 to it)
+    securityGroupIds:
+      - sg-0f0b18f9c2272d425
+    
+    subnetIds:
+      - subnet-0e618dae5b619690f
+      - subnet-006f958ac9800ec08
+      - subnet-04a916b591ef1e4c4
+
+functions:
+  app:
+    handler: main.handler
+    
+    events:
+      - httpApi:   # HTTP API or REST API
+          path: /{proxy+}
+          method: ANY
+
+layers:
+  caBundle:
+    path: certs/
+    compatibleRuntimes:
+      - python3.11
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    dockerImage: public.ecr.aws/sam/build-python3.11:latest
+    zip: true
+    slim: false
